@@ -3,7 +3,7 @@ from datetime import datetime
 from pathlib import Path
 
 from dotenv import load_dotenv
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, session
 import nltk
 
 from image_generator import generate_image_from_prompt
@@ -15,9 +15,7 @@ app = Flask(__name__)
 app.config["IMAGES_DIR"] = Path("static") / "images"
 app.config["MAX_SCENES"] = 8
 app.config["MAX_HISTORY"] = 5
-
-# In-memory generation history for the running app session.
-history = []
+app.config["SECRET_KEY"] = os.getenv("FLASK_SECRET_KEY", "dev-only-change-me")
 
 
 def ensure_nltk_resources() -> None:
@@ -37,6 +35,7 @@ def index():
     ensure_nltk_resources()
 
     storyboard = []
+    history = session.get("history", [])
     error_message = None
     input_text = ""
 
@@ -119,6 +118,8 @@ def index():
 
         if len(history) > app.config["MAX_HISTORY"]:
             history.pop(0)
+
+        session["history"] = history
 
     return render_template(
         "index.html",

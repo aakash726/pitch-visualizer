@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pitch Visualizer</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@500;700;800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --ink: #172230;
+            --paper: #f8f5ee;
+            --warm: #f4c95d;
+            --coral: #ef7d57;
+            --teal: #2a9d8f;
+            --card: rgba(255, 255, 255, 0.72);
+            --border: rgba(23, 34, 48, 0.15);
+            --shadow: 0 20px 45px rgba(23, 34, 48, 0.12);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: "DM Sans", sans-serif;
+            color: var(--ink);
+            background:
+                radial-gradient(circle at 12% 18%, rgba(244, 201, 93, 0.32), transparent 38%),
+                radial-gradient(circle at 82% 16%, rgba(42, 157, 143, 0.26), transparent 34%),
+                linear-gradient(145deg, #f7efe2 0%, #f3f5ff 45%, #fdf7ec 100%);
+            min-height: 100vh;
+        }
+
+        .grain {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            background-image: radial-gradient(rgba(23, 34, 48, 0.07) 0.5px, transparent 0.5px);
+            background-size: 4px 4px;
+            opacity: 0.2;
+        }
+
+        .container {
+            width: min(1080px, 92vw);
+            margin: 48px auto 64px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .hero {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 28px;
+            box-shadow: var(--shadow);
+            padding: 28px;
+            backdrop-filter: blur(8px);
+            animation: rise-in 500ms ease-out;
+        }
+
+        h1 {
+            margin: 0 0 8px;
+            font-family: "Syne", sans-serif;
+            font-size: clamp(2rem, 4vw, 3rem);
+            line-height: 1.1;
+            letter-spacing: -0.03em;
+        }
+
+        .subtitle {
+            margin: 0 0 18px;
+            max-width: 65ch;
+            color: rgba(23, 34, 48, 0.88);
+        }
+
+        textarea {
+            width: 100%;
+            min-height: 160px;
+            resize: vertical;
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 14px 16px;
+            font-size: 1rem;
+            background: rgba(255, 255, 255, 0.85);
+            color: var(--ink);
+            outline: none;
+            transition: border-color 180ms ease, box-shadow 180ms ease;
+        }
+
+        textarea:focus {
+            border-color: var(--teal);
+            box-shadow: 0 0 0 4px rgba(42, 157, 143, 0.14);
+        }
+
+        .actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 14px;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .helper {
+            font-size: 0.95rem;
+            color: rgba(23, 34, 48, 0.74);
+        }
+
+        button {
+            border: 0;
+            border-radius: 999px;
+            padding: 12px 22px;
+            font-weight: 700;
+            font-size: 0.98rem;
+            color: #0f1a26;
+            background: linear-gradient(120deg, var(--warm), var(--coral));
+            cursor: pointer;
+            transition: transform 120ms ease, box-shadow 180ms ease;
+            box-shadow: 0 10px 20px rgba(239, 125, 87, 0.25);
+        }
+
+        button:hover {
+            transform: translateY(-1px);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        .error {
+            margin-top: 14px;
+            border-left: 4px solid #c82828;
+            background: rgba(200, 40, 40, 0.08);
+            border-radius: 10px;
+            padding: 10px 12px;
+        }
+
+        .storyboard {
+            margin-top: 28px;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+            gap: 16px;
+        }
+
+        .scene-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: var(--shadow);
+            animation: rise-in 480ms ease-out both;
+        }
+
+        .scene-card img {
+            width: 100%;
+            height: 220px;
+            object-fit: cover;
+            display: block;
+            background: rgba(23, 34, 48, 0.06);
+        }
+
+        .scene-body {
+            padding: 12px 14px 14px;
+        }
+
+        .scene-title {
+            margin: 0;
+            font-family: "Syne", sans-serif;
+            font-size: 1.05rem;
+        }
+
+        .caption {
+            margin: 8px 0 0;
+            font-size: 0.95rem;
+            color: rgba(23, 34, 48, 0.88);
+        }
+
+        .status-failed {
+            margin-top: 8px;
+            color: #b42318;
+            font-size: 0.9rem;
+        }
+
+        .prompt-preview {
+            margin-top: 8px;
+            font-size: 0.84rem;
+            color: rgba(23, 34, 48, 0.68);
+        }
+
+        @keyframes rise-in {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @media (max-width: 680px) {
+            .container {
+                margin-top: 26px;
+            }
+
+            .hero {
+                padding: 18px;
+                border-radius: 20px;
+            }
+
+            .scene-card img {
+                height: 190px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="grain"></div>
+    <main class="container">
+        <section class="hero">
+            <h1>Pitch Visualizer</h1>
+            <p class="subtitle">Paste a short narrative and turn each sentence into a storyboard scene with AI-generated imagery.</p>
+
+            <form method="POST">
+                <label for="story" class="helper">Story paragraph</label>
+                <textarea id="story" name="story" placeholder="Write 2-6 sentences that describe your story...">{{ input_text }}</textarea>
+
+                <div class="actions">
+                    <span class="helper">Tip: clearer scenes produce stronger images.</span>
+                    <button type="submit">Generate Storyboard</button>
+                </div>
+            </form>
+
+            {% if error_message %}
+                <div class="error">{{ error_message }}</div>
+            {% endif %}
+        </section>
+
+        {% if storyboard %}
+            <section class="storyboard">
+                {% for scene in storyboard %}
+                    <article class="scene-card" style="animation-delay: {{ loop.index0 * 90 }}ms;">
+                        {% if scene.status == 'success' %}
+                            <img src="{{ url_for('static', filename=scene.image_path) }}" alt="Scene {{ scene.scene_number }} image">
+                        {% else %}
+                            <img src="https://placehold.co/800x600/f3f0e8/39485e?text=Image+Generation+Failed" alt="Scene generation failed">
+                        {% endif %}
+
+                        <div class="scene-body">
+                            <h2 class="scene-title">Scene {{ scene.scene_number }}</h2>
+                            <p class="caption">{{ scene.caption }}</p>
+
+                            {% if scene.status == 'failed' and scene.error %}
+                                <div class="status-failed">{{ scene.error }}</div>
+                            {% endif %}
+
+                            <div class="prompt-preview">Prompt: {{ scene.prompt }}</div>
+                        </div>
+                    </article>
+                {% endfor %}
+            </section>
+        {% endif %}
+    </main>
+</body>
+</html>

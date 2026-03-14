@@ -136,8 +136,90 @@
             padding: 10px 12px;
         }
 
+        .loading {
+            margin-top: 14px;
+            border: 1px solid rgba(42, 157, 143, 0.35);
+            background: rgba(42, 157, 143, 0.1);
+            border-radius: 12px;
+            padding: 12px;
+            display: none;
+            align-items: center;
+            gap: 10px;
+            font-weight: 500;
+        }
+
+        .loading.visible {
+            display: flex;
+        }
+
+        .spinner {
+            width: 18px;
+            height: 18px;
+            border: 2px solid rgba(23, 34, 48, 0.22);
+            border-top-color: var(--teal);
+            border-radius: 50%;
+            animation: spin 700ms linear infinite;
+            flex-shrink: 0;
+        }
+
+        button:disabled {
+            cursor: not-allowed;
+            opacity: 0.65;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .storyboard-meta {
+            margin-top: 24px;
+            font-family: "Syne", sans-serif;
+            font-size: 1.2rem;
+            letter-spacing: -0.01em;
+        }
+
+        .empty-state {
+            margin-top: 24px;
+            border: 1px dashed var(--border);
+            border-radius: 16px;
+            padding: 18px;
+            background: rgba(255, 255, 255, 0.52);
+            color: rgba(23, 34, 48, 0.76);
+            text-align: center;
+        }
+
         .storyboard {
             margin-top: 28px;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+            gap: 16px;
+        }
+
+        .history-section {
+            margin-top: 34px;
+        }
+
+        .history-title {
+            margin: 0 0 14px;
+            font-family: "Syne", sans-serif;
+            font-size: 1.35rem;
+            letter-spacing: -0.01em;
+        }
+
+        .history-entry {
+            margin-top: 14px;
+            padding: 14px;
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            background: rgba(255, 255, 255, 0.6);
+        }
+
+        .history-story {
+            margin: 0 0 10px;
+            color: rgba(23, 34, 48, 0.88);
+            font-size: 0.95rem;
+        }
+
+        .history-storyboard {
+            margin-top: 12px;
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
             gap: 16px;
@@ -182,12 +264,6 @@
             font-size: 0.9rem;
         }
 
-        .prompt-preview {
-            margin-top: 8px;
-            font-size: 0.84rem;
-            color: rgba(23, 34, 48, 0.68);
-        }
-
         @keyframes rise-in {
             from {
                 opacity: 0;
@@ -196,6 +272,15 @@
             to {
                 opacity: 1;
                 transform: translateY(0);
+            }
+        }
+
+        @keyframes spin {
+            from {
+                transform: rotate(0deg);
+            }
+            to {
+                transform: rotate(360deg);
             }
         }
 
@@ -220,15 +305,20 @@
     <main class="container">
         <section class="hero">
             <h1>Pitch Visualizer</h1>
-            <p class="subtitle">Paste a short narrative and turn each sentence into a storyboard scene with AI-generated imagery.</p>
+            <p class="subtitle">Transform narrative text into AI-generated visual storyboards.</p>
 
-            <form method="POST">
+            <form method="POST" onsubmit="showLoading()">
                 <label for="story" class="helper">Story paragraph</label>
-                <textarea id="story" name="story" placeholder="Write 2-6 sentences that describe your story...">{{ input_text }}</textarea>
+                <textarea id="story" name="story" placeholder="Paste your story here..."></textarea>
 
                 <div class="actions">
                     <span class="helper">Tip: clearer scenes produce stronger images.</span>
-                    <button type="submit">Generate Storyboard</button>
+                    <button id="generateBtn" type="submit">Generate Storyboard</button>
+                </div>
+
+                <div id="loadingState" class="loading" role="status" aria-live="polite">
+                    <span class="spinner" aria-hidden="true"></span>
+                    <span>Generating AI storyboard images... this may take 20-30 seconds.</span>
                 </div>
             </form>
 
@@ -238,6 +328,7 @@
         </section>
 
         {% if storyboard %}
+            <p class="storyboard-meta">Generated {{ storyboard|length }} storyboard scenes</p>
             <section class="storyboard">
                 {% for scene in storyboard %}
                     <article class="scene-card" style="animation-delay: {{ loop.index0 * 90 }}ms;">
@@ -254,13 +345,65 @@
                             {% if scene.status == 'failed' and scene.error %}
                                 <div class="status-failed">{{ scene.error }}</div>
                             {% endif %}
+                        </div>
+                    </article>
+                {% endfor %}
+            </section>
+        {% else %}
+            <section class="empty-state">Enter a story above and generate your AI storyboard.</section>
+        {% endif %}
 
-                            <div class="prompt-preview">Prompt: {{ scene.prompt }}</div>
+        {% set previous_generations = history[:-1] if storyboard else history %}
+        {% if previous_generations %}
+            <section class="history-section">
+                <h2 class="history-title">Previous Generations</h2>
+
+                {% for item in previous_generations|reverse %}
+                    <article class="history-entry">
+                        <p class="history-story"><strong>Story:</strong> {{ item.story }}</p>
+                        <div class="history-storyboard">
+                            {% for caption in item.scenes %}
+                                {% set idx = loop.index0 %}
+                                <article class="scene-card">
+                                    {% if item.statuses[idx] == 'success' %}
+                                        <img src="{{ url_for('static', filename=item.images[idx]) }}" alt="Previous scene {{ idx + 1 }}">
+                                    {% else %}
+                                        <img src="https://placehold.co/800x600/f3f0e8/39485e?text=Generation+Failed" alt="Previous scene failed">
+                                    {% endif %}
+
+                                    <div class="scene-body">
+                                        <p class="caption">{{ caption }}</p>
+                                    </div>
+                                </article>
+                            {% endfor %}
                         </div>
                     </article>
                 {% endfor %}
             </section>
         {% endif %}
     </main>
+
+    <script>
+        function showLoading() {
+            const button = document.getElementById("generateBtn");
+            const loadingState = document.getElementById("loadingState");
+
+            if (button) {
+                button.disabled = true;
+                button.textContent = "Generating...";
+            }
+
+            if (loadingState) {
+                loadingState.classList.add("visible");
+            }
+        }
+
+        window.onload = function() {
+            const scenes = document.querySelector(".storyboard");
+            if (scenes) {
+                scenes.scrollIntoView({ behavior: "smooth" });
+            }
+        };
+    </script>
 </body>
 </html>

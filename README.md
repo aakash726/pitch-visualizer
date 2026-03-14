@@ -2,6 +2,10 @@
 
 Pitch Visualizer turns a short paragraph into a storyboard by splitting text into scenes and generating an image for each scene with the Hugging Face Inference API.
 
+## Demo
+
+![Pitch Visualizer Demo](screenshot.png)
+
 ## Stack
 
 - Backend: Flask

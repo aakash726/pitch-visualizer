@@ -1,4 +1,5 @@
 import os
+from datetime import datetime
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -13,6 +14,10 @@ load_dotenv()
 app = Flask(__name__)
 app.config["IMAGES_DIR"] = Path("static") / "images"
 app.config["MAX_SCENES"] = 8
+app.config["MAX_HISTORY"] = 5
+
+# In-memory generation history for the running app session.
+history = []
 
 
 def ensure_nltk_resources() -> None:
@@ -43,6 +48,7 @@ def index():
             return render_template(
                 "index.html",
                 storyboard=storyboard,
+                history=history,
                 error_message=error_message,
                 input_text=input_text,
             )
@@ -53,6 +59,7 @@ def index():
             return render_template(
                 "index.html",
                 storyboard=storyboard,
+                history=history,
                 error_message=error_message,
                 input_text=input_text,
             )
@@ -69,13 +76,16 @@ def index():
             return render_template(
                 "index.html",
                 storyboard=storyboard,
+                history=history,
                 error_message=error_message,
                 input_text=input_text,
             )
 
+        generation_id = datetime.utcnow().strftime("%Y%m%d%H%M%S%f")
+
         for index_num, scene in enumerate(scenes, start=1):
             prompt = build_visual_prompt(scene)
-            image_filename = f"scene{index_num}.png"
+            image_filename = f"scene_{generation_id}_{index_num}.png"
             output_path = images_dir / image_filename
 
             image_result = generate_image_from_prompt(
@@ -98,9 +108,22 @@ def index():
         if all(item["status"] == "failed" for item in storyboard):
             error_message = "Image generation failed for all scenes. Check your API key or try again in a moment."
 
+        history.append(
+            {
+                "story": input_text,
+                "scenes": [item["caption"] for item in storyboard],
+                "images": [item["image_path"] for item in storyboard],
+                "statuses": [item["status"] for item in storyboard],
+            }
+        )
+
+        if len(history) > app.config["MAX_HISTORY"]:
+            history.pop(0)
+
     return render_template(
         "index.html",
         storyboard=storyboard,
+        history=history,
         error_message=error_message,
         input_text=input_text,
     )
